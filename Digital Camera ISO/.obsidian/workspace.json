@@ -1,0 +1,155 @@
+{
+  "main": {
+    "id": "c5a7d57e63fdf422",
+    "type": "split",
+    "children": [
+      {
+        "id": "14c4fe0eb75b188e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9790f523a161f149",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "ISO 12232.md",
+                "mode": "source",
+                "source": false
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "db7b6f09542e6218",
+    "type": "split",
+    "children": [
+      {
+        "id": "871f1fb60ea5635e",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "bc52838442ea8f76",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "9946655f099e54b4",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          },
+          {
+            "id": "1a066de3a0196826",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {}
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "4fce20d1aafe1b04",
+    "type": "split",
+    "children": [
+      {
+        "id": "651eb463ac8d1ac7",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b1235815c1be3011",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "ISO 12232.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "71eb173163778c93",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "ISO 12232.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          },
+          {
+            "id": "57990b4296eb910b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true
+              }
+            }
+          },
+          {
+            "id": "b1221481d3bcdbff",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "ISO 12232.md"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "9790f523a161f149",
+  "lastOpenFiles": [
+    "Film Speed.md",
+    "ISO 12232.md",
+    "DIN 4512.md"
+  ]
+}
