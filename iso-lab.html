@@ -1,0 +1,518 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ISO Noise Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a short answer up top, then one workbench (picture left, camera controls right,
+   meters and a curve underneath), then the explanation as plain reading text. */
+:root {
+  --bg: #eef1f4;
+  --surface: #ffffff;
+  --ink: #171c22;
+  --muted: #5a6675;
+  --line: #d5dbe2;
+  --light: #b86a00;      /* amber: the light itself */
+  --circuit: #2f6fd0;    /* blue: the camera's electronics */
+  --stage: #0b0d10;      /* picture surround, dark in both themes */
+  --stage-ink: #c9d1da;
+  --display: "Barlow Semi Condensed", "Arial Narrow", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #101418; --surface: #181d23; --ink: #e8ecf0; --muted: #97a3b0; --line: #2b333c;
+    --light: #d98f24; --circuit: #5b93e6; --stage: #06080a; --stage-ink: #c9d1da;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #101418; --surface: #181d23; --ink: #e8ecf0; --muted: #97a3b0; --line: #2b333c;
+  --light: #d98f24; --circuit: #5b93e6; --stage: #06080a; --stage-ink: #c9d1da;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 40px;
+}
+h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.15; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -0.01em; }
+h2 { font-size: 1.6rem; }
+h3 { font-size: 1.1rem; font-family: var(--body); }
+p { margin: 0; }
+.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.prose { max-width: 66ch; display: flex; flex-direction: column; gap: 14px; }
+.prose ul { margin: 0; padding-left: 1.2em; display: flex; flex-direction: column; gap: 8px; }
+header.top { display: flex; flex-direction: column; gap: 14px; }
+.answer { font-size: 1.2rem; max-width: 62ch; }
+.answer strong { font-weight: 600; }
+
+/* workbench */
+.bench { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; display: flex; flex-direction: column; }
+.presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.presets .eyebrow { margin-right: 4px; }
+button.preset {
+  font: 500 0.875rem var(--body); color: var(--ink); background: var(--bg);
+  border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer;
+}
+button.preset:hover { border-color: var(--muted); }
+button.preset[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+:focus-visible { outline: 2px solid var(--circuit); outline-offset: 2px; }
+.hint { padding: 10px 16px; border-bottom: 1px solid var(--line); font-size: 0.95rem; color: var(--muted); }
+.hint b { color: var(--ink); font-weight: 600; }
+.work { display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+.stage { background: var(--stage); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.stage canvas { width: 100%; height: auto; display: block; aspect-ratio: 600 / 375; background: #000; }
+.verdict { color: var(--stage-ink); font-size: 0.9rem; min-height: 2.8em; }
+.controls { padding: 16px; display: flex; flex-direction: column; gap: 18px; border-left: 1px solid var(--line); min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field > label, .field > .lab { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-weight: 600; font-size: 0.9rem; }
+.field output { font-family: var(--mono); font-weight: 500; font-size: 0.9rem; font-variant-numeric: tabular-nums; text-align: right; }
+.field small { color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+input[type="range"] { width: 100%; margin: 0; }
+#iso { accent-color: var(--circuit); }
+#light { accent-color: var(--light); }
+.cams { display: flex; flex-direction: column; gap: 4px; }
+.cams label { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9rem; cursor: pointer; }
+.cams input, .check input { accent-color: var(--ink); margin-top: 0.3em; }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 0.9rem; cursor: pointer; }
+.check small { display: block; color: var(--muted); font-size: 0.8rem; line-height: 1.4; }
+
+.meters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--line); }
+.meter { padding: 14px 16px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meter:last-child { border-right: 0; }
+.meter .k { font-size: 0.78rem; color: var(--muted); }
+.meter .v { font-family: var(--mono); font-size: 1.3rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+.meter .n { font-size: 0.78rem; color: var(--muted); }
+
+.sources { border-top: 1px solid var(--line); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.sources .row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 190px; gap: 10px; align-items: center; font-size: 0.82rem; }
+.bar { display: flex; gap: 2px; height: 12px; }
+.bar i { display: block; height: 100%; min-width: 0; }
+.bar .l { background: var(--light); border-radius: 3px 0 0 3px; }
+.bar .c { background: var(--circuit); border-radius: 0 3px 3px 0; }
+.sources .pct { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--muted); text-align: right; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 0.82rem; color: var(--muted); }
+.legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; background: var(--sw); }
+
+.curve { border-top: 1px solid var(--line); padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+.curve p { font-size: 0.9rem; color: var(--muted); max-width: 70ch; }
+.plotscroll { overflow-x: auto; }
+.plot { position: relative; min-width: 500px; }
+.plot svg { display: block; width: 100%; height: auto; }
+.plot text { font-family: var(--body); font-size: 12px; fill: var(--muted); }
+.plot .lbl { fill: var(--ink); font-weight: 500; }
+.tip {
+  position: absolute; pointer-events: none; background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font-size: 0.78rem; line-height: 1.5;
+  white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,.18);
+}
+.tip b { font-family: var(--mono); font-weight: 500; }
+details { font-size: 0.85rem; }
+details summary { cursor: pointer; color: var(--muted); }
+.tablescroll { overflow-x: auto; }
+table { border-collapse: collapse; font-variant-numeric: tabular-nums; margin-top: 8px; }
+th, td { padding: 4px 12px 4px 0; text-align: right; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+th { font-weight: 600; }
+
+/* signal chain */
+ol.chain { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; counter-reset: st; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+ol.chain li { counter-increment: st; padding: 14px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; min-width: 0; }
+ol.chain li:last-child { border-right: 0; }
+ol.chain li::before { content: counter(st); font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+ol.chain h3 { font-size: 0.98rem; }
+ol.chain .noise { font-size: 0.8rem; padding-top: 6px; border-top: 2px solid var(--tone, var(--line)); color: var(--muted); }
+ol.chain .dial { border-top: 0; padding-top: 0; color: var(--ink); font-weight: 500; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+.foot { font-size: 0.85rem; color: var(--muted); max-width: 70ch; }
+code { font-family: var(--mono); font-size: 0.9em; }
+
+@media (max-width: 820px) {
+  .work { grid-template-columns: minmax(0, 1fr); }
+  .controls { border-left: 0; border-top: 1px solid var(--line); }
+  .meters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .meter:nth-child(2) { border-right: 0; }
+  .meter:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+  ol.chain { grid-template-columns: minmax(0, 1fr); }
+  ol.chain li { border-right: 0; border-bottom: 1px solid var(--line); }
+  ol.chain li:last-child { border-bottom: 0; }
+  .two { grid-template-columns: minmax(0, 1fr); }
+  .sources .row { grid-template-columns: 70px minmax(0, 1fr) 96px; }
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">ISO Noise Lab</span>
+    <h1>Why does lower ISO look cleaner?</h1>
+    <p class="answer">Because lowering ISO makes you, or the camera, give the sensor <strong>more light</strong> to keep the picture bright. The extra light is what removes the noise. ISO only sets how much the signal is amplified after the light has been captured.</p>
+    <p class="answer">So you are right that the picture gets cleaner, and the people telling you ISO doesn't cause noise are right too. Try both below.</p>
+  </header>
+
+  <section class="bench" aria-label="Sensor simulator">
+    <div class="presets">
+      <span class="eyebrow">Experiments</span>
+      <button class="preset" type="button" data-p="studio">The studio effect</button>
+      <button class="preset" type="button" data-p="freeze">Freeze the light</button>
+      <button class="preset" type="button" data-p="modern">Same test, modern sensor</button>
+      <button class="preset" type="button" data-p="dual">Dual native ISO</button>
+    </div>
+    <div class="hint" id="hint"></div>
+    <div class="work">
+      <div class="stage">
+        <canvas id="cv" width="600" height="375" role="img" aria-label="Simulated studio test scene with noise from the current settings"></canvas>
+        <div class="verdict" id="verdict" aria-live="polite"></div>
+      </div>
+      <div class="controls">
+        <div class="field">
+          <span class="lab">Camera</span>
+          <div class="cams" role="radiogroup" aria-label="Camera">
+            <label><input type="radio" name="cam" id="cam-old" value="old"> Older or small-sensor camera</label>
+            <label><input type="radio" name="cam" id="cam-modern" value="modern"> Modern full-frame</label>
+            <label><input type="radio" name="cam" id="cam-dual" value="dual"> Dual native ISO cinema camera</label>
+          </div>
+        </div>
+        <div class="field">
+          <label for="iso">ISO <output id="isoOut"></output></label>
+          <input type="range" id="iso" min="0" max="21" step="1">
+          <small>Amplification applied after capture.</small>
+        </div>
+        <div class="field">
+          <label for="light">Light on the sensor <output id="lightOut"></output></label>
+          <input type="range" id="light" min="0" max="21" step="1">
+          <small>Studio lights, aperture and shutter all feed this one number. Far right is as much as ISO 100 can take.</small>
+        </div>
+        <label class="check"><input type="checkbox" id="linked">
+          <span>Expose for the ISO<small>Moving ISO moves the light to hold brightness, the way a meter or auto exposure would.</small></span></label>
+        <label class="check"><input type="checkbox" id="match">
+          <span>Fix brightness in post<small>Brighten or darken afterwards so shots compare at equal brightness.</small></span></label>
+        <label class="check"><input type="checkbox" id="live">
+          <span>Live noise<small>Redraw continuously, like video.</small></span></label>
+      </div>
+    </div>
+
+    <div class="meters">
+      <div class="meter"><span class="k">Light captured at mid-grey</span><span class="v" id="mE"></span><span class="n">electrons per pixel</span></div>
+      <div class="meter"><span class="k">Mid-grey signal : noise</span><span class="v" id="mS"></span><span class="n" id="mSn"></span></div>
+      <div class="meter"><span class="k">Shadow signal : noise</span><span class="v" id="mD"></span><span class="n">3 stops under mid-grey</span></div>
+      <div class="meter"><span class="k">Highlight headroom</span><span class="v" id="mH"></span><span class="n" id="mHn"></span></div>
+    </div>
+
+    <div class="sources">
+      <div class="legend">
+        <span style="--sw: var(--light)">Noise from the light itself</span>
+        <span style="--sw: var(--circuit)">Noise added by the camera's electronics</span>
+      </div>
+      <div class="row"><span>Mid-grey</span><div class="bar" id="bM"><i class="l"></i><i class="c"></i></div><span class="pct" id="pM"></span></div>
+      <div class="row"><span>Shadows</span><div class="bar" id="bD"><i class="l"></i><i class="c"></i></div><span class="pct" id="pD"></span></div>
+    </div>
+
+    <div class="curve">
+      <h3>Mid-grey signal-to-noise across the ISO range, this camera</h3>
+      <p>Higher is cleaner. The amber line is what you normally experience: each ISO gets the exposure it calls for. The blue line keeps the light where it is now and changes only ISO.</p>
+      <div class="legend">
+        <span style="--sw: var(--light)">Exposed for each ISO</span>
+        <span style="--sw: var(--circuit)">Light held at its current level</span>
+      </div>
+      <div class="plotscroll"><div class="plot" id="plot"></div></div>
+      <details><summary>Show as a table</summary><div class="tablescroll" id="tbl"></div></details>
+    </div>
+  </section>
+
+  <section class="prose">
+    <h2>What ISO does in the signal chain</h2>
+    <p>A sensor's sensitivity is fixed when it is manufactured. Nothing on the camera body changes how many photons each pixel catches. ISO sits one step later.</p>
+  </section>
+  <ol class="chain">
+    <li><h3>Light arrives</h3><span>Set by your lights, the aperture and the shutter.</span>
+      <span class="noise" style="--tone: var(--light)">Light is grainy by nature. Count N photons and the noise is √N, so four times the light gives twice the cleanliness.</span></li>
+    <li><h3>Pixels count it</h3><span>Each pixel turns photons into electrons until its well is full.</span>
+      <span class="noise" style="--tone: var(--circuit)">A little electronic noise is added as the pixel is read.</span></li>
+    <li><h3>Analog gain</h3><span>Multiplies the signal and all the noise in it by the same factor.</span>
+      <span class="noise dial">This is the ISO dial.</span></li>
+    <li><h3>Converter</h3><span>Turns the voltage into numbers. Anything above its ceiling clips to white.</span>
+      <span class="noise" style="--tone: var(--circuit)">Adds a fixed amount of noise after the gain. Large on older cameras, small on new ones.</span></li>
+    <li><h3>Processing</h3><span>Tone curve, noise reduction, compression.</span>
+      <span class="noise">Extended ISO settings are plain digital brightening done here.</span></li>
+  </ol>
+
+  <div class="two">
+    <section class="prose">
+      <h2>Why your studio cameras make it so obvious</h2>
+      <ul>
+        <li><strong>Lowering ISO forces more light.</strong> The picture goes dark, so you add lights or open the aperture, or auto exposure does it for you. That is step 1 changing, and step 1 is where most noise comes from.</li>
+        <li><strong>Small sensors collect less light.</strong> At the same f-stop and framing a small sensor gathers a fraction of what a full-frame one does, so it starts out noisier and every stop of light matters more.</li>
+        <li><strong>Low ISO leaves room for more light.</strong> At base ISO the pixels can fill completely before clipping. That is the real advantage of low ISO: it lets you pour in the most light.</li>
+        <li><strong>Cheap cameras hide the trade.</strong> Webcams and auto modes raise gain silently when light is short, and heavy noise reduction smears what is left. Adding light makes the camera drop its own gain.</li>
+      </ul>
+    </section>
+    <section class="prose">
+      <h2>What to do with this</h2>
+      <ul>
+        <li>Treat light as the noise control. Add light, open up, or slow the shutter first, then set ISO to whatever makes the picture the right brightness.</li>
+        <li>For video the shutter is usually pinned near 1/50, so lights and aperture are the only real levers.</li>
+        <li>Don't shoot dark at low ISO and lift it in the edit. On older cameras that is worse than using the higher ISO, as the second experiment shows.</li>
+        <li>When light is fixed and short, a higher ISO costs highlight headroom, and little else.</li>
+        <li>On a dual native ISO camera, switch to the higher base when you are short on light. It is cleaner than the settings just below it.</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="prose">
+    <h2>How this fits the notes in this vault</h2>
+    <p>ISO 12232 defines a digital camera's ISO by how bright the finished image comes out for a given exposure, which is why the notes found it so arbitrary. It is a label that tells you how much light to supply. On film, a faster stock was a physically different, grainier emulsion, and that is where the habit of blaming the ISO number for noise comes from.</p>
+    <p class="foot">The simulator is a simplified model: photon shot noise, read noise before and after the gain stage, and clipping at the converter. The camera numbers are representative of their class and are not measurements of any specific model. Real cameras also apply noise reduction and compression, which this leaves out.</p>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var ISOS = [100,125,160,200,250,320,400,500,640,800,1000,1250,1600,2000,2500,3200,4000,5000,6400,8000,10000,12800];
+  // fw: electrons per output pixel at clipping, base ISO. up: read noise before gain (e-).
+  // down: noise added after gain, in base-ISO electrons.
+  var CAMS = {
+    old:    { name: 'older camera',      fw: 8000,  up: 4,   down: 22 },
+    modern: { name: 'modern full-frame', fw: 60000, up: 1.6, down: 4 },
+    dual:   { name: 'dual native ISO camera', fw: 30000, up: 5, upHi: 1.4, dualIdx: 9, down: 6 }
+  };
+  var PRESETS = {
+    studio: { cam: 'old', linked: true, iso: 15, light: 15, match: false,
+      hint: '<b>Drag ISO down to 100.</b> The picture cleans up, and the light slider moves with it. This is what happens in your studio: lower ISO means more light.' },
+    freeze: { cam: 'old', linked: false, iso: 15, light: 15, match: true,
+      hint: '<b>Now drag ISO down again.</b> The light is locked this time. Same light at a lower ISO looks worse on this camera, because the converter noise is no longer small next to the signal.' },
+    modern: { cam: 'modern', linked: false, iso: 15, light: 15, match: true,
+      hint: '<b>Drag ISO anywhere.</b> Same locked light, newer sensor. The noise barely changes. This is what people mean by ISO-invariant.' },
+    dual: { cam: 'dual', linked: false, iso: 8, light: 15, match: true,
+      hint: '<b>Step ISO from 640 to 800.</b> A second, quieter readout circuit takes over at 800 and the shadows clean up, with no change in light.' }
+  };
+  var W = 600, H = 375, MIDGREY = 0.18, SHADOW = 0.18 / 8, WHITE = 0.8;
+  var st = { cam: 'old', iso: 15, light: 15, linked: true, match: false, live: false, preset: 'studio' };
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ---------- scene (linear light, 1.0 = diffuse white) ----------
+  var scene = new Float32Array(W * H * 3);
+  (function build() {
+    var chips = [[0.40,0.22,0.15],[0.75,0.52,0.42],[0.20,0.30,0.48],[0.22,0.32,0.12],[0.38,0.36,0.62],[0.30,0.68,0.60],
+                 [0.80,0.36,0.08],[0.12,0.16,0.50],[0.70,0.14,0.16],[0.16,0.08,0.22],[0.55,0.70,0.14],[0.85,0.60,0.08]];
+    var greys = [0.9, 0.59, 0.36, 0.18, 0.09, 0.03];
+    function ss(a, b, x) { var t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); }
+    for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+      var i = (y * W + x) * 3, r, g, b;
+      // backdrop: seamless paper lit from upper left, falling off to the right and bottom
+      var d = Math.hypot((x - 170) / 520, (y - 90) / 380);
+      var bd = 0.34 * Math.exp(-d * d * 2.4) + 0.035;
+      r = bd * 0.92; g = bd; b = bd * 1.1;
+      // sphere
+      var cx = 185, cy = 195, R = 108, dx = x - cx, dy = y - cy, rr = Math.hypot(dx, dy);
+      // contact shadow
+      var sh = Math.exp(-(Math.pow((x - 215) / 150, 2) + Math.pow((y - 318) / 22, 2)));
+      r *= 1 - 0.8 * sh; g *= 1 - 0.8 * sh; b *= 1 - 0.8 * sh;
+      if (rr < R + 1) {
+        var nz = Math.sqrt(Math.max(0, 1 - (rr * rr) / (R * R))), nx = dx / R, ny = dy / R;
+        var lam = Math.max(0, nx * -0.55 + ny * -0.6 + nz * 0.58);
+        var hx = -0.32, hy = -0.36, hz = 0.88;
+        var spec = Math.pow(Math.max(0, nx * hx + ny * hy + nz * hz), 90) * 2.2;
+        var sr = 0.62 * (lam + 0.03) + spec, sg = 0.40 * (lam + 0.03) + spec, sb = 0.30 * (lam + 0.035) + spec;
+        var a = 1 - ss(R - 1, R + 1, rr);
+        r = r + (sr - r) * a; g = g + (sg - g) * a; b = b + (sb - b) * a;
+      }
+      // chart: 6 x 2 colour chips and a grey step row
+      var gx = 352, gy = 70, cw = 36, gap = 4;
+      if (x >= gx - 8 && x < gx + 6 * (cw + gap) + 4 && y >= gy - 8 && y < gy + 3 * (cw + gap) + 4) {
+        r = g = b = 0.02;
+        var c = Math.floor((x - gx) / (cw + gap)), q = Math.floor((y - gy) / (cw + gap));
+        var inx = (x - gx) - c * (cw + gap), iny = (y - gy) - q * (cw + gap);
+        if (c >= 0 && c < 6 && q >= 0 && q < 3 && inx < cw && iny < cw && x >= gx && y >= gy) {
+          if (q < 2) { var ch = chips[q * 6 + c]; r = ch[0]; g = ch[1]; b = ch[2]; }
+          else { r = g = b = greys[c]; }
+        }
+      }
+      // black cloth with faint stripes: shadow detail
+      if (x >= 344 && x < 590 && y >= 232 && y < 350) {
+        var stripe = (Math.floor((x + y * 0.6) / 14) % 2) ? 0.034 : 0.014;
+        var blk = (Math.floor((x - 344) / 82));
+        var lvl = stripe * [1.6, 1, 0.55][blk];
+        r = lvl; g = lvl; b = lvl * 1.05;
+      }
+      // bare practical bulb: brighter than white
+      var bl = Math.hypot(x - 548, y - 34);
+      if (bl < 30) { var gl = 2.6 * (1 - ss(10, 30, bl)); r += gl; g += gl * 0.9; b += gl * 0.7; }
+      scene[i] = r; scene[i + 1] = g; scene[i + 2] = b;
+    }
+  })();
+
+  // ---------- noise model ----------
+  var POOL = 1 << 20, pool = new Float32Array(POOL);
+  for (var p = 0; p < POOL; p += 2) {
+    var u = 1 - Math.random(), v = Math.random(), m = Math.sqrt(-2 * Math.log(u));
+    pool[p] = m * Math.cos(6.283185307 * v); pool[p + 1] = m * Math.sin(6.283185307 * v);
+  }
+  var LUT = new Uint8ClampedArray(4097);
+  for (var k = 0; k <= 4096; k++) { var l = k / 4096; LUT[k] = Math.round(255 * (l <= 0.0031308 ? 12.92 * l : 1.055 * Math.pow(l, 1 / 2.4) - 0.055)); }
+
+  function model(camKey, isoIdx, lightIdx) {
+    var c = CAMS[camKey], g = ISOS[isoIdx] / 100;
+    var up = (c.upHi && isoIdx >= c.dualIdx) ? c.upHi : c.up;
+    var E = WHITE * c.fw * Math.pow(2, -lightIdx / 3);   // electrons for diffuse white
+    var read2 = up * up + (c.down / g) * (c.down / g);    // input-referred read variance
+    return { c: c, g: g, E: E, read2: read2 };
+  }
+  function snr(md, L) { var s = L * md.E; return s / Math.sqrt(s + md.read2); }
+  function clipped(md, L) { return L * md.E * md.g > md.c.fw; }
+
+  var ctx = $('cv').getContext('2d'), img = ctx.createImageData(W, H);
+  function poisson(mean) { var Lm = Math.exp(-mean), kk = 0, pp = 1; do { kk++; pp *= Math.random(); } while (pp > Lm); return kk - 1; }
+  function render() {
+    var md = model(st.cam, st.iso, st.light), g = md.g, fw = md.c.fw, E = md.E;
+    var sdR2 = md.read2 * g * g;
+    var post = st.match ? Math.pow(2, st.light / 3) / g : 1;
+    var scale = post / (WHITE * fw) * 4096;
+    var d = img.data, pi = (Math.random() * POOL) | 0, n = W * H * 3, j = 0;
+    for (var i = 0; i < n; i++) {
+      var mean = scene[i] * E, raw;
+      if (mean < 12) raw = poisson(mean) * g + Math.sqrt(sdR2) * pool[pi];
+      else raw = mean * g + Math.sqrt(mean * g * g + sdR2) * pool[pi];
+      if (++pi === POOL) pi = 0;
+      if (raw > fw) raw = fw;
+      var o = raw * scale;
+      d[j++] = LUT[o < 0 ? 0 : o > 4096 ? 4096 : o | 0];
+      if (i % 3 === 2) d[j++] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  // ---------- readouts ----------
+  function fmtSnr(x) { return (x < 10 ? x.toFixed(1) : Math.round(x)) + ' : 1'; }
+  function word(x) { return x >= 40 ? 'clean' : x >= 20 ? 'fine grain' : x >= 10 ? 'visible noise' : x >= 4 ? 'heavy noise' : 'mostly noise'; }
+  function fmtN(x) { return x >= 100 ? Math.round(x).toLocaleString('en-US') : x >= 10 ? x.toFixed(0) : x.toFixed(1); }
+  function lightText(idx) {
+    if (idx === 0) return 'full';
+    var f = Math.pow(2, idx / 3);
+    return '1/' + (f < 10 ? (Math.round(f * 10) / 10) : Math.round(f)) + ' · −' + (idx % 3 === 0 ? idx / 3 : (idx / 3).toFixed(1)) + ' stops';
+  }
+  function setBar(barId, pctId, md, L) {
+    var s = L * md.E, share = s / (s + md.read2), b = $(barId).children;
+    b[0].style.width = (share * 100) + '%'; b[1].style.width = ((1 - share) * 100) + '%';
+    $(pctId).textContent = Math.round(share * 100) + '% light · ' + Math.round((1 - share) * 100) + '% camera';
+  }
+  function readouts() {
+    var md = model(st.cam, st.iso, st.light), iso = ISOS[st.iso];
+    $('isoOut').textContent = iso.toLocaleString('en-US');
+    $('lightOut').textContent = lightText(st.light);
+    $('mE').textContent = fmtN(MIDGREY * md.E);
+    var sm = snr(md, MIDGREY), sd = snr(md, SHADOW);
+    var midClip = clipped(md, MIDGREY);
+    $('mS').textContent = midClip ? 'clipped' : fmtSnr(sm);
+    $('mSn').textContent = midClip ? 'blown out to white' : word(sm);
+    $('mD').textContent = fmtSnr(sd);
+    var head = Math.log2((md.c.fw / md.g) / (MIDGREY * md.E));
+    $('mH').textContent = head <= 0 ? 'none' : head.toFixed(1) + ' stops';
+    $('mHn').textContent = head <= 0 ? 'mid-grey is clipping' : 'above mid-grey before clipping';
+    setBar('bM', 'pM', md, MIDGREY); setBar('bD', 'pD', md, SHADOW);
+
+    var diff = (st.iso - st.light) / 3, v;
+    var frac = st.light === 0 ? 'all the light ISO 100 can use' : 'about 1/' + Math.round(Math.pow(2, st.light / 3)) + ' of the light ISO 100 would get';
+    if (Math.abs(diff) < 0.01) {
+      v = 'Correctly exposed for ISO ' + iso.toLocaleString('en-US') + ': the sensor is getting ' + frac + '.';
+    } else if (diff < 0) {
+      v = 'Underexposed by ' + (-diff).toFixed(1).replace('.0', '') + ' stops for ISO ' + iso.toLocaleString('en-US') + (st.match ? ', then brightened in post. ' : '. ') +
+          'The light is unchanged: ' + frac + '.';
+    } else {
+      v = 'Overexposed by ' + diff.toFixed(1).replace('.0', '') + ' stops for ISO ' + iso.toLocaleString('en-US') + (st.match ? ', then pulled down in post. ' : '. ') +
+          'Highlights clip sooner, and the noise is no worse.';
+    }
+    $('verdict').textContent = v;
+  }
+
+  // ---------- curve ----------
+  var PW = 640, PH = 280, ML = 56, MR = 20, MT = 14, MB = 40, YMIN = 0.5, YMAX = 200;
+  function px(i) { return ML + (PW - ML - MR) * i / (ISOS.length - 1); }
+  function py(v) { v = Math.min(YMAX, Math.max(YMIN, v)); return MT + (PH - MT - MB) * (1 - Math.log(v / YMIN) / Math.log(YMAX / YMIN)); }
+  var series = { a: [], b: [] };
+  function curve() {
+    var a = [], b = [], i;
+    for (i = 0; i < ISOS.length; i++) {
+      a.push(snr(model(st.cam, i, i), MIDGREY));
+      var mb = model(st.cam, i, st.light);
+      b.push(clipped(mb, MIDGREY) ? null : snr(mb, MIDGREY));
+    }
+    series.a = a; series.b = b;
+    function path(arr) { var s = '', pen = false; arr.forEach(function (v, i) { if (v == null) { pen = false; return; } s += (pen ? 'L' : 'M') + px(i).toFixed(1) + ' ' + py(v).toFixed(1); pen = true; }); return s; }
+    var svg = '<svg viewBox="0 0 ' + PW + ' ' + PH + '" role="img" aria-label="Mid-grey signal-to-noise against ISO for two cases">';
+    [1, 3, 10, 30, 100].forEach(function (t) {
+      svg += '<line x1="' + ML + '" x2="' + (PW - MR) + '" y1="' + py(t) + '" y2="' + py(t) + '" stroke="var(--line)" stroke-width="1"/>' +
+             '<text x="' + (ML - 8) + '" y="' + (py(t) + 4) + '" text-anchor="end">' + t + ' : 1</text>';
+    });
+    for (i = 0; i < ISOS.length; i += 3) svg += '<text x="' + px(i) + '" y="' + (PH - MB + 18) + '" text-anchor="middle">' + ISOS[i] + '</text>';
+    svg += '<text x="' + (ML + (PW - ML - MR) / 2) + '" y="' + (PH - 4) + '" text-anchor="middle">ISO</text>';
+    svg += '<path d="' + path(a) + '" fill="none" stroke="var(--light)" stroke-width="2" stroke-linejoin="round"/>';
+    svg += '<path d="' + path(b) + '" fill="none" stroke="var(--circuit)" stroke-width="2" stroke-linejoin="round"/>';
+    var cur = snr(model(st.cam, st.iso, st.light), MIDGREY), curClip = clipped(model(st.cam, st.iso, st.light), MIDGREY);
+    svg += '<line id="xh" x1="0" x2="0" y1="' + MT + '" y2="' + (PH - MB) + '" stroke="var(--muted)" stroke-width="1" visibility="hidden"/>';
+    if (!curClip) {
+      var cx = px(st.iso), cy = py(cur), right = cx < PW - 150;
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="var(--ink)" stroke="var(--surface)" stroke-width="2"/>' +
+             '<text class="lbl" x="' + (right ? cx + 11 : cx - 11) + '" y="' + (cy - 14) + '" text-anchor="' + (right ? 'start' : 'end') + '">Your settings · ' + fmtSnr(cur) + '</text>';
+    }
+    svg += '<rect id="hit" x="' + ML + '" y="' + MT + '" width="' + (PW - ML - MR) + '" height="' + (PH - MT - MB) + '" fill="transparent"/></svg><div class="tip" id="tip" hidden></div>';
+    $('plot').innerHTML = svg;
+    var hit = $('hit'), xh = $('xh'), tip = $('tip'), plot = $('plot');
+    function move(ev) {
+      var r = plot.getBoundingClientRect(), sx = (ev.clientX - r.left) / r.width * PW;
+      var i = Math.round((sx - ML) / (PW - ML - MR) * (ISOS.length - 1)); i = Math.max(0, Math.min(ISOS.length - 1, i));
+      xh.setAttribute('x1', px(i)); xh.setAttribute('x2', px(i)); xh.setAttribute('visibility', 'visible');
+      tip.innerHTML = 'ISO <b>' + ISOS[i] + '</b><br>Exposed for it: <b>' + fmtSnr(a[i]) + '</b><br>Light held: <b>' + (b[i] == null ? 'clipped' : fmtSnr(b[i])) + '</b>';
+      tip.hidden = false;
+      var tx = px(i) / PW * r.width;
+      tip.style.left = (tx > r.width - 190 ? tx - tip.offsetWidth - 10 : tx + 10) + 'px'; tip.style.top = '8px';
+    }
+    hit.addEventListener('pointermove', move); hit.addEventListener('pointerdown', move);
+    hit.addEventListener('pointerleave', function () { tip.hidden = true; xh.setAttribute('visibility', 'hidden'); });
+    var t = '<table><thead><tr><th>ISO</th><th>Exposed for each ISO</th><th>Light held</th></tr></thead><tbody>';
+    for (i = 0; i < ISOS.length; i += 3) t += '<tr><td>' + ISOS[i] + '</td><td>' + fmtSnr(a[i]) + '</td><td>' + (b[i] == null ? 'clipped' : fmtSnr(b[i])) + '</td></tr>';
+    $('tbl').innerHTML = t + '</tbody></table>';
+  }
+
+  // ---------- wiring ----------
+  function sync() {
+    $('cam-' + st.cam).checked = true;
+    $('iso').value = st.iso; $('light').value = st.light;
+    $('linked').checked = st.linked; $('match').checked = st.match; $('live').checked = st.live;
+    document.querySelectorAll('button.preset').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.p === st.preset ? 'true' : 'false'); });
+    $('hint').innerHTML = PRESETS[st.preset].hint;
+    readouts(); curve(); render();
+  }
+  $('iso').addEventListener('input', function (e) { st.iso = +e.target.value; if (st.linked) st.light = st.iso; sync(); });
+  $('light').addEventListener('input', function (e) { st.light = +e.target.value; if (st.linked) st.iso = st.light; sync(); });
+  $('linked').addEventListener('change', function (e) { st.linked = e.target.checked; if (st.linked) st.light = st.iso; sync(); });
+  $('match').addEventListener('change', function (e) { st.match = e.target.checked; sync(); });
+  $('live').addEventListener('change', function (e) { st.live = e.target.checked; if (st.live) loop(); });
+  document.querySelectorAll('input[name="cam"]').forEach(function (r) { r.addEventListener('change', function () { st.cam = r.value; sync(); }); });
+  document.querySelectorAll('button.preset').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var p = PRESETS[b.dataset.p];
+      st.preset = b.dataset.p; st.cam = p.cam; st.linked = p.linked; st.iso = p.iso; st.light = p.light; st.match = p.match;
+      sync();
+    });
+  });
+  var last = 0;
+  function loop(t) {
+    if (!st.live) return;
+    if (!t || t - last > 90) { last = t || 0; render(); }
+    requestAnimationFrame(loop);
+  }
+  sync();
+})();
+</script>
